@@ -5,8 +5,27 @@ return {
     event = { 'BufReadPre', 'BufNewFile' },
     config = function()
       local lint = require 'lint'
+      local flake8 = lint.linters.flake8
+
       lint.linters_by_ft = {
-        markdown = { 'markdownlint' },
+        python = { 'flake8' },
+        terraform = { 'tflint' },
+        yaml = { 'yamllint' },
+        json = { 'jsonlint' },
+        dockerfile = { 'hadolint' },
+        cloudformation = { 'cfn-lint' },
+      }
+      flake8.args = {
+        args = {
+          '--format=%(path)s:%(row)d:%(col)d:%(code)s:%(text)s',
+          '--no-show-source',
+          '--stdin-display-name',
+          '--max-line-length=120',
+          function()
+            return vim.api.nvim_buf_get_name(0)
+          end,
+          '-',
+        },
       }
 
       -- To allow other plugins to add linters to require('lint').linters_by_ft,
