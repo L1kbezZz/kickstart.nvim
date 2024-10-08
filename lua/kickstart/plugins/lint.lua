@@ -2,7 +2,7 @@ return {
 
   { -- Linting
     'mfussenegger/nvim-lint',
-    event = { 'BufReadPre', 'BufNewFile' },
+    event = { 'BufReadPre', 'BufNewFile', 'BufWritePost' },
     config = function()
       local lint = require 'lint'
       local flake8 = lint.linters.flake8

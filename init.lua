@@ -240,6 +240,71 @@ vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right win
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
+-- Obsidian
+-- >>> oo # from shell, navigate to vault (optional)
+--
+-- # NEW NOTE
+-- >>> on "Note Name" # call my "obsidian new note" shell script (~/bin/on)
+-- >>>
+-- >>> ))) <leader>on # inside vim now, format note as template
+-- >>> ))) # add tag, e.g. fact / blog / video / etc..
+-- >>> ))) # add hubs, e.g. [[python]], [[machine-learning]], etc...
+-- >>> ))) <leader>of # format title
+--
+-- # END OF DAY/WEEK REVIEW
+-- >>> or # review notes in inbox
+-- >>>
+-- >>> ))) <leader>ok # inside vim now, move to zettelkasten
+-- >>> ))) <leader>odd # or delete
+-- >>>
+-- >>> og # organize saved notes from zettelkasten into notes/[tag] folders
+-- >>> ou # sync local with Notion
+--
+-- navigate to vault
+vim.keymap.set(
+  'n',
+  '<leader>oo',
+  ':cd /Users/l1kbezzz/Library/Mobile\\ Documents/iCloud\\~md\\~obsidian/Documents/rkuzmenko/<cr>',
+  { desc = 'Navigate to Obsidian Vault' }
+)
+
+-- convert note to template and remove leading white space
+vim.keymap.set(
+  'n',
+  '<leader>on',
+  ':ObsidianTemplate note<cr> :lua vim.cmd([[1,/^\\S/s/^\\n\\{1,}//]])<cr>',
+  { desc = 'Convert note to template and remove leading white space' }
+)
+
+-- strip date from note title and replace dashes with spaces
+-- must have cursor on title
+vim.keymap.set('n', '<leader>of', ':s/\\(# \\)[^_]*_/\\1/ | s/-/ /g<cr>', { desc = 'Format note title' })
+
+-- search for files in full vault
+vim.keymap.set(
+  'n',
+  '<leader>os',
+  ':Telescope find_files search_dirs={"/Users/l1kbezzz/Library/Mobile\\ Documents/iCloud~md~obsidian/Documents/rkuzmenko/notes"}<cr>',
+  { desc = 'Search for notes' }
+)
+vim.keymap.set(
+  'n',
+  '<leader>oz',
+  ':Telescope live_grep search_dirs={"/Users/l1kbezzz/Library/Mobile\\ Documents/iCloud~md~obsidian/Documents/rkuzmenko/notes"}<cr>',
+  { desc = 'Live grep in notes' }
+)
+
+-- for review workflow
+-- move file in current buffer to zettelkasten folder
+vim.keymap.set(
+  'n',
+  '<leader>ok',
+  ":!mv '%:p' /Users/l1kbezzz/Library/Mobile\\ Documents/iCloud~md~obsidian/Documents/rkuzmenko/zettelkasten<cr>:bd<cr>",
+  { desc = 'Move file to zettelkasten' }
+)
+-- delete file in current buffer
+vim.keymap.set('n', '<leader>odd', ":!rm '%:p'<cr>:bd<cr>", { desc = 'Delete file' })
+
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
@@ -331,18 +396,25 @@ require('lazy').setup({
 
       -- Document existing key chains
       require('which-key').register {
-        ['<leader>c'] = { name = '[C]ode', _ = 'which_key_ignore' },
-        ['<leader>d'] = { name = '[D]ocument', _ = 'which_key_ignore' },
-        ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
-        ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
-        ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
-        ['<leader>t'] = { name = '[T]oggle', _ = 'which_key_ignore' },
-        ['<leader>h'] = { name = 'Git [H]unk', _ = 'which_key_ignore' },
+        { '<leader>c', group = '[C]ode' },
+        { '<leader>c_', hidden = true },
+        { '<leader>d', group = '[D]ocument' },
+        { '<leader>d_', hidden = true },
+        { '<leader>h', group = 'Git [H]unk' },
+        { '<leader>h_', hidden = true },
+        { '<leader>r', group = '[R]ename' },
+        { '<leader>r_', hidden = true },
+        { '<leader>s', group = '[S]earch' },
+        { '<leader>s_', hidden = true },
+        { '<leader>t', group = '[T]oggle' },
+        { '<leader>t_', hidden = true },
+        { '<leader>w', group = '[W]orkspace' },
+        { '<leader>w_', hidden = true },
       }
       -- visual mode
-      require('which-key').register({
-        ['<leader>h'] = { 'Git [H]unk' },
-      }, { mode = 'v' })
+      require('which-key').register {
+        { '<leader>h', desc = 'Git [H]unk', mode = 'v' },
+      }
     end,
   },
 
@@ -376,6 +448,8 @@ require('lazy').setup({
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
+      'debugloop/telescope-undo.nvim',
+      'jvgrootveld/telescope-zoxide',
     },
     config = function()
       -- Telescope is a fuzzy finder that comes with a lot of different things that
@@ -401,8 +475,8 @@ require('lazy').setup({
       -- See `:help telescope` and `:help telescope.setup()`
 
       function vim.getVisualSelection()
-        vim.cmd 'noau normal! "vy"'
         local text = vim.fn.getreg 'v'
+        vim.cmd 'noau normal! "vy"'
         vim.fn.setreg('v', {})
 
         text = string.gsub(text, '\n', '')
@@ -415,6 +489,9 @@ require('lazy').setup({
 
       local tb = require 'telescope.builtin'
       local opts = { noremap = true, silent = true }
+
+      -- zoxide
+      local z_utils = require 'telescope._extensions.zoxide.utils'
 
       require('telescope').setup {
         -- You can put your default mappings / updates / etc. in here
@@ -445,7 +522,9 @@ require('lazy').setup({
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
       pcall(require('telescope').load_extension, 'refactoring')
-
+      pcall(require('telescope').load_extension, 'noice')
+      pcall(require('telescope').load_extension, 'undo')
+      pcall(require('telescope').load_extension, 'zoxide')
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
       vim.keymap.set({ 'n', 'x' }, '<leader>rr', function()
@@ -461,6 +540,10 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+      vim.keymap.set('n', '<leader>su', '<cmd>Telescope undo<cr>', { desc = '[S]earch [U]ndo' })
+
+      -- zoxide
+      vim.keymap.set('n', '<leader>sz', '<cmd>Telescope zoxide list<cr>', { desc = '[S]earch [Z]oxide' })
 
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
@@ -621,7 +704,7 @@ require('lazy').setup({
           -- This may be unwanted, since they displace some of your code
           if client and client.server_capabilities.inlayHintProvider and vim.lsp.inlay_hint then
             map('<leader>th', function()
-              vim.lsp.inlay_hint.enable(0, not vim.lsp.inlay_hint.is_enabled())
+              vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
             end, '[T]oggle Inlay [H]ints')
           end
         end,
@@ -707,6 +790,11 @@ require('lazy').setup({
             require('lspconfig')[server_name].setup(server)
           end,
         },
+      }
+
+      require('lspconfig').terraformls.setup {
+        filetypes = { 'terraform' },
+        cmd = { 'terraform-ls', 'serve', '-log-file', vim.fs.dirname(require('vim.lsp.log').get_filename()) .. '/terraform-ls.log' },
       }
     end,
   },
@@ -879,114 +967,6 @@ require('lazy').setup({
       }
     end,
   },
-  -- { -- Autocompletion
-  --   'hrsh7th/nvim-cmp',
-  --   event = 'InsertEnter',
-  --   dependencies = {
-  --     -- Snippet Engine & its associated nvim-cmp source
-  --     {
-  --       'L3MON4D3/LuaSnip',
-  --       build = (function()
-  --         -- Build Step is needed for regex support in snippets.
-  --         -- This step is not supported in many windows environments.
-  --         -- Remove the below condition to re-enable on windows.
-  --         if vim.fn.has 'win32' == 1 or vim.fn.executable 'make' == 0 then
-  --           return
-  --         end
-  --         return 'make install_jsregexp'
-  --       end)(),
-  --       dependencies = {
-  --         -- `friendly-snippets` contains a variety of premade snippets.
-  --         --    See the README about individual language/framework/plugin snippets:
-  --         --    https://github.com/rafamadriz/friendly-snippets
-  --         -- {
-  --         --   'rafamadriz/friendly-snippets',
-  --         --   config = function()
-  --         --     require('luasnip.loaders.from_vscode').lazy_load()
-  --         --   end,
-  --         -- },
-  --       },
-  --     },
-  --     'saadparwaiz1/cmp_luasnip',
-  --
-  --     -- Adds other completion capabilities.
-  --     --  nvim-cmp does not ship with all sources by default. They are split
-  --     --  into multiple repos for maintenance purposes.
-  --     'hrsh7th/cmp-nvim-lsp',
-  --     'hrsh7th/cmp-path',
-  --   },
-  --   config = function()
-  --     -- See `:help cmp`
-  --     local cmp = require 'cmp'
-  --     local luasnip = require 'luasnip'
-  --     luasnip.config.setup {}
-  --
-  --     cmp.setup {
-  --       snippet = {
-  --         expand = function(args)
-  --           luasnip.lsp_expand(args.body)
-  --         end,
-  --       },
-  --       completion = { completeopt = 'menu,menuone,noinsert' },
-  --
-  --       -- For an understanding of why these mappings were
-  --       -- chosen, you will need to read `:help ins-completion`
-  --       --
-  --       -- No, but seriously. Please read `:help ins-completion`, it is really good!
-  --       mapping = cmp.mapping.preset.insert {
-  --         -- Select the [n]ext item
-  --         ['<C-n>'] = cmp.mapping.select_next_item(),
-  --         -- Select the [p]revious item
-  --         ['<C-p>'] = cmp.mapping.select_prev_item(),
-  --
-  --         -- Scroll the documentation window [b]ack / [f]orward
-  --         ['<C-b>'] = cmp.mapping.scroll_docs(-4),
-  --         ['<C-f>'] = cmp.mapping.scroll_docs(4),
-  --
-  --         -- Accept ([y]es) the completion.
-  --         --  This will auto-import if your LSP supports it.
-  --         --  This will expand snippets if the LSP sent a snippet.
-  --         ['<C-y>'] = cmp.mapping.confirm { select = true },
-  --
-  --         -- Decline ([n]o) the completion.
-  --         ['<C-x>'] = cmp.mapping.close(),
-  --
-  --         -- Manually trigger a completion from nvim-cmp.
-  --         --  Generally you don't need this, because nvim-cmp will display
-  --         --  completions whenever it has completion options available.
-  --         -- ['<C-Space>'] = cmp.mapping.complete {},
-  --
-  --         -- Think of <c-l> as moving to the right of your snippet expansion.
-  --         --  So if you have a snippet that's like:
-  --         --  function $name($args)
-  --         --    $body
-  --         --  end
-  --         --
-  --         -- <c-l> will move you to the right of each of the expansion locations.
-  --         -- <c-h> is similar, except moving you backwards.
-  --         ['<C-l>'] = cmp.mapping(function()
-  --           if luasnip.expand_or_locally_jumpable() then
-  --             luasnip.expand_or_jump()
-  --           end
-  --         end, { 'i', 's' }),
-  --         ['<C-h>'] = cmp.mapping(function()
-  --           if luasnip.locally_jumpable(-1) then
-  --             luasnip.jump(-1)
-  --           end
-  --         end, { 'i', 's' }),
-  --
-  --         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
-  --         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
-  --       },
-  --       sources = {
-  --         { name = 'nvim_lsp' },
-  --         { name = 'luasnip' },
-  --         { name = 'path' },
-  --         { name = 'copilot', group_index = 2 },
-  --       },
-  --     }
-  --   end,
-  -- },
   {
     'folke/tokyonight.nvim',
   },
@@ -1006,6 +986,10 @@ require('lazy').setup({
   },
   {
     'EdenEast/nightfox.nvim',
+    priority = 1000,
+    init = function()
+      vim.cmd.colorscheme 'duskfox'
+    end,
   },
   {
     'navarasu/onedark.nvim',
@@ -1013,9 +997,9 @@ require('lazy').setup({
     opts = {
       style = 'deep',
     },
-    init = function()
-      vim.cmd.colorscheme 'onedark'
-    end,
+    -- init = function()
+    --   vim.cmd.colorscheme 'onedark'
+    -- end,
   },
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
@@ -1216,6 +1200,7 @@ require('lazy').setup({
   },
   {
     'linux-cultist/venv-selector.nvim',
+    branch = 'regexp',
     dependencies = { 'neovim/nvim-lspconfig', 'nvim-telescope/telescope.nvim', 'mfussenegger/nvim-dap-python' },
     opts = {
       -- Your options go here
@@ -1240,43 +1225,43 @@ require('lazy').setup({
   --     require('refactoring').setup()
   --   end,
   -- },
-  {
-    'folke/trouble.nvim',
-    branch = 'dev', -- IMPORTANT!
-    keys = {
-      {
-        '<leader>xx',
-        '<cmd>Trouble diagnostics toggle<cr>',
-        desc = 'Diagnostics (Trouble)',
-      },
-      {
-        '<leader>xX',
-        '<cmd>Trouble diagnostics toggle filter.buf=0<cr>',
-        desc = 'Buffer Diagnostics (Trouble)',
-      },
-      {
-        '<leader>cs',
-        '<cmd>Trouble symbols toggle focus=false<cr>',
-        desc = 'Symbols (Trouble)',
-      },
-      {
-        '<leader>cl',
-        '<cmd>Trouble lsp toggle focus=false win.position=right<cr>',
-        desc = 'LSP Definitions / references / ... (Trouble)',
-      },
-      {
-        '<leader>xL',
-        '<cmd>Trouble loclist toggle<cr>',
-        desc = 'Location List (Trouble)',
-      },
-      {
-        '<leader>xQ',
-        '<cmd>Trouble qflist toggle<cr>',
-        desc = 'Quickfix List (Trouble)',
-      },
-    },
-    opts = {}, -- for default options, refer to the configuration section for custom setup.
-  },
+  -- {
+  --   'folke/trouble.nvim',
+  --   branch = 'dev', -- IMPORTANT!
+  --   keys = {
+  --     {
+  --       '<leader>xx',
+  --       '<cmd>Trouble diagnostics toggle<cr>',
+  --       desc = 'Diagnostics (Trouble)',
+  --     },
+  --     {
+  --       '<leader>xX',
+  --       '<cmd>Trouble diagnostics toggle filter.buf=0<cr>',
+  --       desc = 'Buffer Diagnostics (Trouble)',
+  --     },
+  --     {
+  --       '<leader>cs',
+  --       '<cmd>Trouble symbols toggle focus=false<cr>',
+  --       desc = 'Symbols (Trouble)',
+  --     },
+  --     {
+  --       '<leader>cl',
+  --       '<cmd>Trouble lsp toggle focus=false win.position=right<cr>',
+  --       desc = 'LSP Definitions / references / ... (Trouble)',
+  --     },
+  --     {
+  --       '<leader>xL',
+  --       '<cmd>Trouble loclist toggle<cr>',
+  --       desc = 'Location List (Trouble)',
+  --     },
+  --     {
+  --       '<leader>xQ',
+  --       '<cmd>Trouble qflist toggle<cr>',
+  --       desc = 'Quickfix List (Trouble)',
+  --     },
+  --   },
+  --   opts = {}, -- for default options, refer to the configuration section for custom setup.
+  -- },
   {
     'zbirenbaum/copilot.lua',
     event = { 'BufEnter' },
@@ -1450,14 +1435,12 @@ require('lazy').setup({
       -- Add which-key mappings
       local wk = require 'which-key'
       wk.register {
-        g = {
-          m = {
-            name = '+Copilot Chat',
-            d = 'Show diff',
-            p = 'System prompt',
-            s = 'Show selection',
-            y = 'Yank diff',
-          },
+        {
+          { 'gm', group = 'Copilot Chat' },
+          { 'gmd', desc = 'Show diff' },
+          { 'gmp', desc = 'System prompt' },
+          { 'gms', desc = 'Show selection' },
+          { 'gmy', desc = 'Yank diff' },
         },
       }
     end,
@@ -1615,7 +1598,8 @@ require('lazy').setup({
               comp = { comp }
               section[id] = comp
             end
-            comp.separator = left and { right = '' } or { left = '' }
+            -- comp.separator = left and { right = '' } or { left = '' }
+            comp.separator = left and { right = '' } or { left = '' }
           end
         end
         return sections
@@ -1655,7 +1639,8 @@ require('lazy').setup({
         options = {
           theme = theme,
           component_separators = '',
-          section_separators = { left = '', right = '' },
+          -- section_separators = { left = '', right = '' },
+          section_separators = { left = '', right = '' },
         },
         sections = process_sections {
           lualine_a = { 'mode' },
@@ -1708,7 +1693,37 @@ require('lazy').setup({
       }
     end,
   },
-
+  {
+    'hrsh7th/cmp-cmdline',
+    dependencies = {
+      'hrsh7th/cmp-buffer',
+      'hrsh7th/cmp-cmdline',
+    },
+    config = function()
+      local cmp = require 'cmp'
+      -- `/` cmdline setup.
+      cmp.setup.cmdline('/', {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = {
+          { name = 'buffer' },
+        },
+      })
+      -- `:` cmdline setup.
+      cmp.setup.cmdline(':', {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = cmp.config.sources({
+          { name = 'path' },
+        }, {
+          {
+            name = 'cmdline',
+            option = {
+              ignore_cmds = { 'Man', '!' },
+            },
+          },
+        }),
+      })
+    end,
+  },
   -- Copied from craftzdog dotfiles
   -- messages, cmdline and the popupmenu
   {
@@ -1765,6 +1780,9 @@ require('lazy').setup({
       })
 
       opts.presets.lsp_doc_border = true
+
+      -- Dismiss Noice Message
+      vim.keymap.set('n', '<leader>nd', '<cmd>NoiceDismiss<CR>', { desc = 'Dismiss Noice Message' })
     end,
   },
   {
@@ -1834,58 +1852,17 @@ require('lazy').setup({
       }
     end,
   },
-
-  -- 'tpope/vim-fugitive',
-
-  {
-    'NeogitOrg/neogit',
-    dependencies = {
-      'nvim-lua/plenary.nvim', -- required
-      'sindrets/diffview.nvim', -- optional - Diff integration
-
-      -- Only one of these is needed, not both.
-      'nvim-telescope/telescope.nvim', -- optional
-    },
-    config = true,
-  },
-  {
-    'mbbill/undotree',
-
-    config = function()
-      vim.keymap.set('n', '<leader>u', vim.cmd.UndotreeToggle)
-    end,
-  },
   -- {
-  --   'folke/noice.nvim',
+  --   'NeogitOrg/neogit',
   --   event = 'VeryLazy',
-  --   opts = {
-  --     lsp = {
-  --       override = {
-  --         ['vim.lsp.util.convert_input_to_markdown_lines'] = true,
-  --         ['vim.lsp.util.stylize_markdown'] = true,
-  --         ['cmp.entry.get_documentation'] = true,
-  --       },
-  --     },
-  --     routes = {
-  --       {
-  --         filter = {
-  --           event = 'msg_show',
-  --           any = {
-  --             { find = '%d+L, %d+B' },
-  --             { find = '; after #%d+' },
-  --             { find = '; before #%d+' },
-  --           },
-  --         },
-  --         view = 'mini',
-  --       },
-  --     },
-  --     presets = {
-  --       bottom_search = false,
-  --       command_palette = true,
-  --       long_message_to_split = true,
-  --       inc_rename = true,
-  --     },
+  --   dependencies = {
+  --     'nvim-lua/plenary.nvim', -- required
+  --     'sindrets/diffview.nvim', -- optional - Diff integration
+  --
+  --     -- Only one of these is needed, not both.
+  --     'nvim-telescope/telescope.nvim', -- optional
   --   },
+  --   config = true,
   -- },
   {
     'kevinhwang91/nvim-bqf',
@@ -2066,104 +2043,132 @@ require('lazy').setup({
     end,
   },
   {
-    'gelguy/wilder.nvim',
-    keys = {
-      ':',
-      '/',
-      '?',
-    },
+    'pwntester/octo.nvim',
     dependencies = {
-      'catppuccin/nvim',
+      'nvim-lua/plenary.nvim',
+      'nvim-telescope/telescope.nvim',
+      'nvim-tree/nvim-web-devicons',
     },
     config = function()
-      local wilder = require 'wilder'
-      local macchiato = require('catppuccin.palettes').get_palette 'macchiato'
-
-      -- Create a highlight group for the popup menu
-      local text_highlight = wilder.make_hl('WilderText', { { a = 1 }, { a = 1 }, { foreground = macchiato.text } })
-      local mauve_highlight = wilder.make_hl('WilderMauve', { { a = 1 }, { a = 1 }, { foreground = macchiato.mauve } })
-
-      -- Enable wilder when pressing :, / or ?
-      wilder.setup { modes = { ':', '/', '?' } }
-
-      -- Enable fuzzy matching for commands and buffers
-      wilder.set_option('pipeline', {
-        wilder.branch(
-          wilder.cmdline_pipeline {
-            language = 'python',
-            fuzzy = 1,
-            sorter = wilder.python_difflib_sorter(),
-          },
-          wilder.vim_search_pipeline {
-            language = 'python',
-            fuzzy = 1,
-            sorter = wilder.python_difflib_sorter(),
-          },
-          wilder.python_search_pipeline {
-            pattern = wilder.python_fuzzy_pattern(),
-            sorter = wilder.python_difflib_sorter(),
-            engine = 're',
-          }
-        ),
-      })
-
-      wilder.set_option(
-        'renderer',
-        wilder.popupmenu_renderer(wilder.popupmenu_border_theme {
-          highlighter = wilder.basic_highlighter(),
-          highlights = {
-            default = text_highlight,
-            border = mauve_highlight,
-            accent = mauve_highlight,
-          },
-          pumblend = 5,
-          min_width = '100%',
-          min_height = '25%',
-          max_height = '25%',
-          border = 'rounded',
-          left = { ' ', wilder.popupmenu_devicons() },
-          right = { ' ', wilder.popupmenu_scrollbar() },
-        })
-      )
+      require('octo').setup()
     end,
-    -- config = function()
-    --   local wilder = require 'wilder'
-    --
-    --   -- Enable wilder when pressing :, / or ?
-    --   wilder.setup { modes = { ':', '/', '?' } }
-    --
-    --   -- Enable fuzzy matching for commands and buffers
-    --   wilder.set_option('pipeline', {
-    --     wilder.branch(
-    --       wilder.cmdline_pipeline {
-    --         fuzzy = 1,
-    --       },
-    --       wilder.vim_search_pipeline {
-    --         fuzzy = 1,
-    --       }
-    --     ),
-    --   })
-    --   wilder.set_option(
-    --     'renderer',
-    --     wilder.popupmenu_renderer(wilder.popupmenu_border_theme {
-    --       highlighter = wilder.basic_highlighter(),
-    --       pumblend = 5,
-    --       min_width = '100%',
-    --       min_height = '25%',
-    --       max_height = '25%',
-    --       border = 'rounded',
-    --       left = { ' ', wilder.popupmenu_devicons() },
-    --       right = { ' ', wilder.popupmenu_scrollbar() },
-    --     })
-    -- wilder.popupmenu_renderer(wilder.popupmenu_palette_theme {
-    --   -- 'single', 'double', 'rounded' or 'solid'
-    --   -- can also be a list of 8 characters, see :h wilder#popupmenu_palette_theme() for more details
-    --   border = 'rounded',
-    --   max_height = '75%', -- max height of the palette
-    --   min_height = 0, -- set to the same as 'max_height' for a fixed height window
-    --   prompt_position = 'top', -- 'top' or 'bottom' to set the location of the prompt
-    --   reverse = 0, -- set to 1 to reverse the order of the list, use in combination with 'prompt_position'
-    -- })
+  },
+  {
+    'aaronhallaert/advanced-git-search.nvim',
+    cmd = { 'AdvancedGitSearch' },
+    config = function()
+      -- optional: setup telescope before loading the extension
+      require('telescope').setup {
+        -- move this to the place where you call the telescope setup function
+        extensions = {
+          advanced_git_search = {
+            -- See Config
+          },
+        },
+      }
+
+      require('telescope').load_extension 'advanced_git_search'
+    end,
+    dependencies = {
+      'nvim-telescope/telescope.nvim',
+      -- to show diff splits and open commits in browser
+      'tpope/vim-fugitive',
+      -- to open commits in browser with fugitive
+      'tpope/vim-rhubarb',
+      -- optional: to replace the diff from fugitive with diffview.nvim
+      -- (fugitive is still needed to open in browser)
+      'sindrets/diffview.nvim',
+    },
+  },
+  {
+    'shellRaining/hlchunk.nvim',
+    event = { 'BufReadPre', 'BufNewFile' },
+    config = function()
+      require('hlchunk').setup {
+        chunk = {
+          enable = true,
+          use_treesitter = true,
+        },
+        indent = {
+          enable = true,
+        },
+        line_num = {
+          enable = true,
+          use_treesitter = true,
+        },
+      }
+    end,
+  },
+  {
+    'epwalsh/obsidian.nvim',
+    version = '*',
+    lazy = true,
+    ft = 'markdown',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+    },
+    config = function()
+      require('obsidian').setup {
+        workspaces = {
+          {
+            name = 'rkuzmenko',
+            path = '/Users/l1kbezzz/Library/Mobile Documents/iCloud~md~obsidian/Documents/rkuzmenko',
+          },
+        },
+        notes_subdir = 'inbox',
+        new_notes_location = 'notes_subdir',
+
+        disable_frontmatter = true,
+        templates = {
+          subdir = 'templates',
+          date_format = '%Y-%m-%d',
+          time_format = '%H:%M:%S',
+        },
+
+        -- name new notes starting the ISO datetime and ending with note name
+        -- put them in the inbox subdir
+        -- note_id_func = function(title)
+        --   local suffix = ""
+        --   -- get current ISO datetime with -5 hour offset from UTC for EST
+        --   local current_datetime = os.date("!%Y-%m-%d-%H%M%S", os.time() - 5*3600)
+        --   if title ~= nil then
+        --     suffix = title:gsub(" ", "-"):gsub("[^A-Za-z0-9-]", ""):lower()
+        --   else
+        --     for _ = 1, 4 do
+        --       suffix = suffix .. string.char(math.random(65, 90))
+        --     end
+        --   end
+        --   return current_datetime .. "_" .. suffix
+        -- end,
+
+        -- key mappings, below are the defaults
+        mappings = {
+          -- overrides the 'gf' mapping to work on markdown/wiki links within your vault
+          ['gf'] = {
+            action = function()
+              return require('obsidian').util.gf_passthrough()
+            end,
+            opts = { noremap = false, expr = true, buffer = true },
+          },
+          -- toggle check-boxes
+          -- ["<leader>ch"] = {
+          --   action = function()
+          --     return require("obsidian").util.toggle_checkbox()
+          --   end,
+          --   opts = { buffer = true },
+          -- },
+        },
+        completion = {
+          nvim_cmp = true,
+          min_chars = 2,
+        },
+        ui = {
+          -- Disable some things below here because I set these manually for all Markdown files using treesitter
+          checkboxes = {},
+          bullets = {},
+        },
+      }
+    end,
   },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
